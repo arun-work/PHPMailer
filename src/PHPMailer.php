@@ -4519,6 +4519,40 @@ class PHPMailer
     }
 
     /**
+     * The "relaxed" Body Canonicalization Algorithm
+     * Function implementation according to RFC4871
+     *
+     * @link http://tools.ietf.org/html/rfc4871#page-15
+     *
+     * @param string $body Body String to Canonicalization
+     * @return string Relaxed Body Canonicalizated data
+     * @access public
+     * @author Ahmad Amarullah
+     */
+    public function DKIM_BodyCRelaxed($body) {
+        // Return CRLF for empty body
+        if ($body == ''){
+          return "\r\n";
+        }
+        // Replace all CRLF to LF
+        $body = str_replace("\r\n","\n",$body);
+        // Replace LF to CRLF
+        $body = str_replace("\n","\r\n",$body);
+        // Ignores all whitespace at the end of lines
+        $body=rtrim($body,"\r\n");
+        // Canonicalizated String Variable
+        $canon_body = '';
+        // Split the body into lines
+        foreach(explode("\r\n",$body) as $line){
+          // Reduces all sequences of White Space within a line
+          // to a single SP character
+          $canon_body.= rtrim(preg_replace('/[\t\n ]++/',' ',$line))."\r\n";
+        }
+        // Return the Canonicalizated Body
+        return $canon_body;
+    }
+
+    /**
      * Create the DKIM header and body in a new message header.
      *
      * @param string $headers_line Header lines
@@ -4532,7 +4566,7 @@ class PHPMailer
     public function DKIM_Add($headers_line, $subject, $body)
     {
         $DKIMsignatureType = 'rsa-sha256'; // Signature & hash algorithms
-        $DKIMcanonicalization = 'relaxed/simple'; // Canonicalization of header/body
+        $DKIMcanonicalization = 'relaxed/relaxed'; // Canonicalization of header/body
         $DKIMquery = 'dns/txt'; // Query method
         $DKIMtime = time(); // Signature Timestamp = seconds since 00:00:00 - Jan 1, 1970 (UTC time zone)
         $subject_header = "Subject: $subject";
@@ -4597,7 +4631,7 @@ class PHPMailer
                                   " |$subject;\r\n" .
                                   $extraCopyHeaderFields;
         }
-        $body = $this->DKIM_BodyC($body);
+        $body = $this->DKIM_BodyCRelaxed($body); //$this->DKIM_BodyC($body);
         $DKIMlen = strlen($body); // Length of body
         $DKIMb64 = base64_encode(pack('H*', hash('sha256', $body))); // Base64 of packed binary SHA-256 hash of body
         if ('' === $this->DKIM_identity) {
