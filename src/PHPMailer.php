@@ -4566,7 +4566,7 @@ class PHPMailer
     public function DKIM_Add($headers_line, $subject, $body)
     {
         $DKIMsignatureType = 'rsa-sha256'; // Signature & hash algorithms
-        $DKIMcanonicalization = 'relaxed/relaxed'; // Canonicalization of header/body
+        $DKIMcanonicalization = 'relaxed/simple'; // Canonicalization of header/body
         $DKIMquery = 'dns/txt'; // Query method
         $DKIMtime = time(); // Signature Timestamp = seconds since 00:00:00 - Jan 1, 1970 (UTC time zone)
         $subject_header = "Subject: $subject";
@@ -4631,25 +4631,24 @@ class PHPMailer
                                   " |$subject;\r\n" .
                                   $extraCopyHeaderFields;
         }
-        $body = $this->DKIM_BodyCRelaxed($body); //$this->DKIM_BodyC($body);
+        $body = $this->DKIM_BodyC($body); //$this->DKIM_BodyC($body);
         $DKIMlen = strlen($body); // Length of body
         $DKIMb64 = base64_encode(pack('H*', hash('sha256', $body))); // Base64 of packed binary SHA-256 hash of body
         if ('' === $this->DKIM_identity) {
             $ident = '';
         } else {
-            $ident = ' i=' . $this->DKIM_identity . ';';
+            $ident = ' i=' . $this->DKIM_identity . ";";
         }
         $dkimhdrs = 'DKIM-Signature: v=1; a=' .
             $DKIMsignatureType . '; q=' .
-            $DKIMquery . '; l=' .
-            $DKIMlen . '; s=' .
-            $this->DKIM_selector .
-            ";\r\n" .
-            ' t=' . $DKIMtime . '; c=' . $DKIMcanonicalization . ";\r\n" .
-            ' h=From:To:Date:Subject' . $extraHeaderKeys . ";\r\n" .
-            ' d=' . $this->DKIM_domain . ';' . $ident . "\r\n" .
+            $DKIMquery . '; c=' .
+            $DKIMcanonicalization . '; t=' .
+            $DKIMtime . ";" .
+            ' s=' . $this->DKIM_selector .'; d=' . $this->DKIM_domain . ";" . 
+            $ident . // ";\r\n" included
+            ' h=From:To:Date:Subject' . $extraHeaderKeys . "; l=" . $DKIMlen. ";" .
             $copiedHeaderFields .
-            ' bh=' . $DKIMb64 . ";\r\n" .
+            ' bh=' . $DKIMb64 . ";" .
             ' b=';
         $toSign = $this->DKIM_HeaderC(
             $from_header . "\r\n" .
